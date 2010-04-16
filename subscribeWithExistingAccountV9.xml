@@ -1,0 +1,50 @@
+<ns1:subscribeWithExistingAccount>
+    <ns1:subscribeWithExistingAccounts xsi:type="ns2:SubscribeWithExistingAccountRequest">
+        <ns1:AccountId></ns1:AccountId>
+        <ns1:SubscribeOptions xsi:type="ns2:SubscribeOptions">
+            <ns1:GenerateInvoice>False</ns1:GenerateInvoice>
+            <ns1:ProcessPayments>False</ns1:ProcessPayments>
+        </ns1:SubscribeOptions>
+        <ns1:SubscriptionData xsi:type="ns2:SubscriptionData">
+            <ns1:Subscription xsi:type="ns2:Subscription">
+                <ns2:AutoRenew></ns2:AutoRenew>
+                <ns2:ContractAcceptanceDate></ns2:ContractAcceptanceDate>
+                <ns2:ContractEffectiveDate></ns2:ContractEffectiveDate>
+                <ns2:Currency>USD</ns2:Currency>
+                <ns2:InitialTerm></ns2:InitialTerm>
+                <ns2:Name></ns2:Name>
+                <ns2:RenewalTerm></ns2:RenewalTerm>
+                <ns2:ServiceActivationDate></ns2:ServiceActivationDate>
+<!-- N/A
+                <ns2:TermStartDate>2009-03-18T12:00:00</ns2:TermStartDate>
+-->
+            </ns1:Subscription>
+            <ns1:RatePlanData xsi:type="ns2:RatePlanData">
+                <ns1:RatePlan xsi:type="ns2:RatePlan">
+                    <ns2:ProductRatePlanId></ns2:ProductRatePlanId>
+                </ns1:RatePlan>
+<!-- Optional: start. -->
+                <ns1:RatePlanCharge xsi:type="ns2:RatePlanCharge">
+                    <ns2:ProductRatePlanChargeId></ns2:ProductRatePlanChargeId>
+                    <ns2:Quantity></ns2:Quantity>
+                </ns1:RatePlanCharge>
+<!-- Optional: end. -->
+            </ns1:RatePlanData>
+<!-- Additional RatePlans: start -->
+            <ns1:RatePlanData xsi:type="ns2:RatePlanData">
+                <ns1:RatePlan xsi:type="ns2:RatePlan">
+                    <ns2:ProductRatePlanId></ns2:ProductRatePlanId>
+                </ns1:RatePlan>
+<!-- Optional: start. -->
+                <ns1:RatePlanChargeData>
+                    <ns1:RatePlanCharge xsi:type="ns2:RatePlanCharge">
+                    	<ns2:ProductRatePlanChargeId></ns2:ProductRatePlanChargeId>
+                    	<ns2:Quantity></ns2:Quantity>
+                    </ns1:RatePlanCharge>
+                </ns1:RatePlanChargeData>
+<!-- Optional: end. -->
+            </ns1:RatePlanData>
+<!-- Additional RatePlans: end. -->
+        </ns1:SubscriptionData>
+    </ns1:subscribeWithExistingAccounts>
+</ns1:subscribeWithExistingAccount>

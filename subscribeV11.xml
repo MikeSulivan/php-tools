@@ -1,0 +1,100 @@
+<ns1:subscribe>
+    <ns1:subscribes>
+        <!-- Option 1: Subscribe call that creates an account, contacts and payment method. -->
+        <ns1:Account xsi:type="ns2:Account">
+            <ns2:AccountNumber></ns2:AccountNumber>
+            <ns2:AllowInvoiceEdit></ns2:AllowInvoiceEdit>
+            <ns2:AutoPay></ns2:AutoPay>
+            <ns2:Batch>Batch1</ns2:Batch>
+            <ns2:BillCycleDay></ns2:BillCycleDay>
+            <ns2:CrmId></ns2:CrmId>
+            <ns2:Currency>USD</ns2:Currency>
+            <ns2:CustomerServiceRepName></ns2:CustomerServiceRepName>
+            <ns2:Name></ns2:Name>
+            <ns2:PaymentTerm>Due Upon Receipt</ns2:PaymentTerm>
+            <ns2:PurchaseOrderNumber></ns2:PurchaseOrderNumber>
+            <ns2:SalesRepName></ns2:SalesRepName>
+        </ns1:Account>
+        <ns1:PaymentMethod xsi:type="ns2:PaymentMethod">
+            <ns2:CreditCardAddress1></ns2:CreditCardAddress1>
+            <ns2:CreditCardCity></ns2:CreditCardCity>
+            <ns2:CreditCardCountry></ns2:CreditCardCountry>
+            <ns2:CreditCardExpirationMonth></ns2:CreditCardExpirationMonth>
+            <ns2:CreditCardExpirationYear></ns2:CreditCardExpirationYear>
+            <ns2:CreditCardHolderName></ns2:CreditCardHolderName>
+            <ns2:CreditCardNumber></ns2:CreditCardNumber>
+            <ns2:CreditCardPostalCode></ns2:CreditCardPostalCode>
+            <ns2:CreditCardState></ns2:CreditCardState>
+            <ns2:CreditCardType>Visa</ns2:CreditCardType>
+            <ns2:Type>CreditCard</ns2:Type>
+        </ns1:PaymentMethod>
+        <ns1:BillToContact xsi:type="ns2:Contact">
+            <ns2:Address1></ns2:Address1>
+            <ns2:City></ns2:City>
+            <ns2:Country></ns2:Country>
+            <ns2:FirstName></ns2:FirstName>
+            <ns2:LastName></ns2:LastName>
+            <ns2:PostalCode></ns2:PostalCode>
+            <ns2:State></ns2:State>
+            <ns2:WorkEmail></ns2:WorkEmail>
+            <ns2:WorkPhone></ns2:WorkPhone>
+        </ns1:BillToContact>
+        <ns1:SoldToContact xsi:type="ns2:Contact">
+            <ns2:Address1></ns2:Address1>
+            <ns2:City></ns2:City>
+            <ns2:Country></ns2:Country>
+            <ns2:FirstName></ns2:FirstName>
+            <ns2:LastName></ns2:LastName>
+            <ns2:PostalCode></ns2:PostalCode>
+            <ns2:State></ns2:State>
+            <ns2:WorkEmail></ns2:WorkEmail>
+            <ns2:WorkPhone></ns2:WorkPhone>
+        </ns1:SoldToContact>
+        <!-- End of Option 1 -->
+        <!-- Option 2: Subscribe call for an existing account, creates just the subscription. -->
+        <ns1:Account xsi:type="ns2:Account">
+            <ns2:Id></ns2:Id>
+        </ns1:Account>
+        <!-- End of Option 2 -->
+        <ns1:SubscribeOptions>
+            <ns1:GenerateInvoice>false</ns1:GenerateInvoice>
+            <ns1:ProcessPayments>false</ns1:ProcessPayments>
+        </ns1:SubscribeOptions>
+        <ns1:SubscriptionData>
+            <ns1:Subscription xsi:type="ns2:Subscription">
+                <ns2:AutoRenew></ns2:AutoRenew>
+                <ns2:ContractAcceptanceDate></ns2:ContractAcceptanceDate>
+                <ns2:ContractEffectiveDate></ns2:ContractEffectiveDate>
+                <ns2:InitialTerm></ns2:InitialTerm>
+                <ns2:Name></ns2:Name>
+                <ns2:RenewalTerm></ns2:RenewalTerm>
+                <ns2:ServiceActivationDate></ns2:ServiceActivationDate>
+                <ns2:TermStartDate></ns2:TermStartDate>
+            </ns1:Subscription>
+            <ns1:RatePlanData>
+                <ns1:RatePlan xsi:type="ns2:RatePlan">
+                    <ns2:ProductRatePlanId></ns2:ProductRatePlanId>
+                </ns1:RatePlan>
+                <ns1:RatePlanChargeData>
+                    <ns1:RatePlanCharge xsi:type="ns2:RatePlanCharge">
+                        <ns2:ProductRatePlanChargeId></ns2:ProductRatePlanChargeId>
+                        <ns2:Quantity></ns2:Quantity>
+                    </ns1:RatePlanCharge>
+                </ns1:RatePlanChargeData>
+            </ns1:RatePlanData>
+<!-- Optional: start. -->
+            <ns1:RatePlanData>
+                <ns1:RatePlan xsi:type="ns2:RatePlan">
+                    <ns2:ProductRatePlanId></ns2:ProductRatePlanId>
+                </ns1:RatePlan>
+                <ns1:RatePlanChargeData>
+                    <ns1:RatePlanCharge xsi:type="ns2:RatePlanCharge">
+                        <ns2:ProductRatePlanChargeId></ns2:ProductRatePlanChargeId>
+                        <ns2:Quantity></ns2:Quantity>
+                    </ns1:RatePlanCharge>
+                </ns1:RatePlanChargeData>
+            </ns1:RatePlanData>
+<!-- Optional: end. -->
+        </ns1:SubscriptionData>
+    </ns1:subscribes>
+</ns1:subscribe>
