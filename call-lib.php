@@ -919,7 +919,7 @@ class ZuoraAPIHelper {
 	global $TEXT_QUALIFIER;
 
         $resultRecords = $xml_obj->xpath("//" . $defaultApiNamespace . ":records");
-        return getCSVDataFromRecords($resultRecords, $uniqueHeaders, $print, $headers);
+        return ZuoraAPIHelper::getCSVDataFromRecords($resultRecords, $uniqueHeaders, $print, $headers);
 /*
 	#Fill in the data.
 	$temp = "";
@@ -1120,6 +1120,23 @@ class ZuoraAPIHelper {
         }
         return array($found, $index1, $index2);
     }   
+
+    ################################################################################
+    # Helper call that finds the indexes of keys in two arrays. Used for deciding if
+    # the join will be innner or outer join.
+    public static function getTableJoinKeyIndex($tableData, $key = "") {
+	if (strlen($key) <= 0) {
+            return -1;
+        }
+        $counter = 0;
+        foreach($tableData[0] as $header) {
+	    if (strcasecmp($key,$header) == 0) {
+                return $counter;
+            }
+            $counter++;
+        }
+        return -1;
+    }
 
     ################################################################################
     # Helper call that joins two arrays, each with headers that contain the link column.
