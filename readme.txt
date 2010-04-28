@@ -35,8 +35,28 @@ subscribeWithExistingAccount.xml - subscribeWithExistingAccount() template, late
 subscribeWithExistingAccountV9.xml- subscribe() template, version 9
 zuora-19.0-sandbox-AllOptions.wsdl - latest WSDL, sandbox
 
+INSTALLATION INSTRUCTIONS
+-------------------------
+
+The following instructions assume that you're going to use Xampp (http://www.apachefriends.org/en/xampp.html) on the localhost as the web server.
+
+a) Make sure no other application is running on port 80. You can verify this by running "netstat -a -n -o" on the command prompt. Terminate the offending app, if running on port 80.
+
+b) Install Xampp for Windows using default path.
+
+c) Run the Xampp config tool.
+
+d) Click on Port Check button on the Xamp control panel. Make sure Port 80 is available.
+
+e) In the Xampp control panel start Apache server.
+
+f) In the Xampp directory, extract the zip file (Zuora source) under a folder named api-util.
+
+g) Make sure Apache is running.
+
+h) In a web browser type http://localhost/api-util/. This should load up the API Utility for Zuora.
+
 DOCUMENTATION & SUPPORT
 -----------------------
 
 API Documentation is available at http://developer.zuora.com
-
