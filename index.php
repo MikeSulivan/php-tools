@@ -1,7 +1,7 @@
 <?php
 include("call-lib.php");
 
-$DEFAULT_WSDL = 'zuora-19.0-sandbox-AllOptions.wsdl';
+$DEFAULT_WSDL = 'zuora-25.0-sandbox-AllOptions.wsdl';
 $SUBSCRIBE_TEMPLATE = array(1=>array(
               			     "version"=>'1.0',
               			     "subscribe"=>'subscribe.xml',
@@ -136,7 +136,7 @@ if (isset($_POST['submit'])) {
     // get and use remaining arguments
     $username = $_POST['username'];
     $password = $_POST['password'];
-    $body = str_replace("\\\"", "\"", $_SESSION['body']);
+    $body = $_SESSION['body'];
     $wsdl = $_SESSION['wsdl'];
 
     // catch query/api confusion.
@@ -155,9 +155,14 @@ if (isset($_POST['submit'])) {
     }
 
     if ($method == "query") {
-       $payload = "<ns1:query><ns1:queryString>" . $body . "</ns1:queryString></ns1:query>";
+       $payload = "<ns1:query><ns1:queryString>" . htmlspecialchars($body) . "</ns1:queryString></ns1:query>";
     } else {
        $payload = $body;
+    }
+
+    $callOptions = array();
+    if ($_POST['api-singleTxn']) {
+        $callOptions = array("useSingleTransaction"=>$_POST['api-singleTxn']);
     }
 
     if ($method == "query" || $method == "api") {
@@ -165,8 +170,8 @@ if (isset($_POST['submit'])) {
        	    $client = createClient($wsdl, $debug);
 
        	    $header = login($client, $username, $password, $debug);
-
-       	    $soapRequest = ZuoraAPIHelper::createRequestAndHeadersWithNS($header->data["session"], $_SESSION['api-batchSize'], $payload, $_SESSION['api-ns'], $_SESSION['object-ns']);
+            
+       	    $soapRequest = ZuoraAPIHelper::createRequestAndHeadersWithNS($header->data["session"], $_SESSION['api-batchSize'], $callOptions, $payload, $_SESSION['api-ns'], $_SESSION['object-ns']);
 
             $timeBefore = microtime(true);
 	    $xml = ZuoraAPIHelper::callAPIWithClient($client, $header, $soapRequest, $debug);
@@ -191,7 +196,7 @@ if (isset($_POST['submit'])) {
 	    $queryLocator = ZuoraAPIHelper::getQueryLocator($xml);
 	    while ($outputQM && $queryLocator) {
 	        $payload = "<ns1:queryMore><ns1:queryLocator>" . $queryLocator . "</ns1:queryLocator></ns1:queryMore>";
-       	    	$soapRequest = ZuoraAPIHelper::createRequestAndHeadersWithNS($header->data["session"], $_SESSION['api-batchSize'], $payload, $_SESSION['api-ns'], $_SESSION['object-ns']);
+       	    	$soapRequest = ZuoraAPIHelper::createRequestAndHeadersWithNS($header->data["session"], $_SESSION['api-batchSize'], $callOptions, $payload, $_SESSION['api-ns'], $_SESSION['object-ns']);
 
                 $timeBefore = microtime(true);
 	    	$xml = ZuoraAPIHelper::callAPIWithClient($client, $header, $soapRequest, $debug);
@@ -318,7 +323,20 @@ if (strlen($call) > 0) {
 <td><input type="submit" value="WSDL" name="wsdl-download"/></td><td><select name="wsdl">
 <?php
 $wsdl_files = dirList('.');
-sort($wsdl_files);
+function cmp($a, $b) {
+    $prefix = '\-';
+    $av = substrpos($a, $prefix, '.') * -1;
+    $bv = substrpos($b, $prefix, '.') * -1;
+    if ($av == $bv) {
+        if ($a == $b) {
+            return 0;
+        }
+        return ($a < $b) ? -1 : 1;
+    }
+    // Reverse sort.
+    return ($av > $bv) ? -1 : 1;
+}
+usort($wsdl_files, 'cmp');
 foreach ($wsdl_files as $wsdl_filename) {
    if (strcasecmp($wsdl_filename,$_SESSION['wsdl']) == 0)
       echo "<option value=\"" . $wsdl_filename . "\" selected=\"yes\" >" . $wsdl_filename . "</option>\n";
@@ -331,6 +349,16 @@ foreach ($wsdl_files as $wsdl_filename) {
 <tr><td>Password:</td><td><input type="password" size="30" name="password" value=""/></td></tr>
 </table>
 </td>
+
+<td>&nbsp;</td>
+<td>
+<table>
+<tr><td>Query Batch Size&nbsp;<input type="text" size="4" name="api-batchSize" value="<?php echo $_SESSION['api-batchSize'] ?>"/></td></tr>
+<tr><td>&nbsp;*&nbsp;Default thru v5 100, v6+ 2000.</td></tr>
+<tr><td><input type="checkbox" name="api-singleTxn" value="true"/>&nbsp;Call Options: Single Transaction</td></tr>
+</table>
+</td>
+
 <td>&nbsp;</td>
 <td>
 <table>
@@ -340,22 +368,13 @@ foreach ($wsdl_files as $wsdl_filename) {
 </table>
 </td>
 
-<td>&nbsp;</td>
-<td>
-<table>
-<tr><td>Query Options:</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;Batch Size&nbsp;<input type="text" size="4" name="api-batchSize" value="<?php echo $_SESSION['api-batchSize'] ?>"/></td></tr>
-<tr><td>&nbsp;*&nbsp;100 by default, thru v5.<br/>
-&nbsp;*&nbsp;2000 by default w/ QueryMore, v6+.</td></tr>
-</table>
-</td>
 </tr>
 </table>
 
 <table>
 <tr><td>
 Enter your query text or call xml here:<br />
-<textarea rows="10" cols="60" name="body" wrap="virtual"><?php echo $_SESSION['body'] ?></textarea><br />
+<textarea rows="10" cols="60" name="body" wrap="virtual"><?php echo ZuoraAPIHelper::xmlspecialchars($_SESSION['body']) ?></textarea><br />
 <input type="submit" value="Submit" name="submit"/><input type="submit" value="Clear" name="reset"/>
 <input type="checkbox" name="csv">CSV Output&nbsp;
 <input type="checkbox" name="queryMore">Use QueryMore to get all results<br />
@@ -378,6 +397,7 @@ foreach ($names as $name) {
 <option value=""></option>
 <?php
 $names = getObjectListFromWSDL($_SESSION['wsdl'], $debug);
+sort($names);
 foreach ($names as $name) {
       if ($name != "zObject") {
             echo "<option value=\"" . $name . "\">" . $name . "</option>\n";
@@ -414,6 +434,125 @@ if (isset($_POST['submit'])) {
         }
     }
 }
+?>
+
+<?php
+
+/** Quoted from http://php.net/manual/en/function.substr.php, submitted by egingell at sisna dot com on 19-Oct-2006 10:19
+ * string substrpos(string $str, mixed $start [[, mixed $end], boolean $ignore_case])
+ *
+ * If $start is a string, substrpos will return the string from the position of the first occuring $start to $end
+ *
+ * If $end is a string, substrpos will return the string from $start to the position of the first occuring $end
+ *
+ * If the first character in (string) $start or (string) $end is '-', the last occuring string will be used.
+ *
+ * If $ignore_case is true, substrpos will not care about the case.
+ * If $ignore_case is false (or anything that is not (boolean) true, the function will be case sensitive.
+ *        Both of the above: only applies if either $start or $end are strings.
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it.', 5, '5');
+ *        // Prints 'is a string with 01234';
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it.', '5', 5);
+ *        // Prints '56789'
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-string')
+ *        // Prints 's is a string with 0123456789 numbers in it and two '
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-STRING', true)
+ *        // Prints 's is a string with 0123456789 numbers in it and two '
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-STRING', false)
+ *        // Prints 's is a string with 0123456789 numbers in it and two strings.'
+ *
+ * Warnings:
+ *        Since $start and $end both take either a string or an integer:
+ *            If the character or string you are searching $str for is a number, pass it as a quoted string.
+ *        If $end is (integer) 0, an empty string will be returned.
+ *        Since this function takes negative strings ('-search_string'):
+ *            If the string your using in $start or $end is a '-' or begins with a '-' escape it with a '\'.
+ *            This only applies to the *first* character of $start or $end.
+ */
+
+// Define stripos() if not defined (PHP < 5).
+if (!is_callable("stripos")) {
+    function stripos($str, $needle, $offset = 0) {
+        return strpos(strtolower($str), strtolower($needle), $offset);
+    }
+}
+
+function substrpos($str, $start, $end = false, $ignore_case = false) {
+    // Use variable functions
+    if ($ignore_case === true) {
+        $strpos = 'stripos'; // stripos() is included above in case it's not defined (PHP < 5).
+    } else {
+        $strpos = 'strpos';
+    }
+
+    // If end is false, set it to the length of $str
+    if ($end === false) {
+        $end = strlen($str);
+    }
+
+    // If $start is a string do what's needed to make it an integer position for substr().
+    if (is_string($start)) {
+        // If $start begins with '-' start processing until there's no more matches and use the last one found.
+        if ($start{0} == '-') {
+            // Strip off the '-'
+            $start = substr($start, 1);
+            $found = false;
+            $pos = 0;
+            while(($curr_pos = $strpos($str, $start, $pos)) !== false) {
+                $found = true;
+                $pos = $curr_pos + 1;
+            }
+            if ($found === false) {
+                $pos = false;
+            } else {
+                $pos -= 1;
+            }
+        } else {
+            // If $start begins with '\-', strip off the '\'.
+            if ($start{0} . $start{1} == '\-') {
+                $start = substr($start, 1);
+            }
+            $pos = $strpos($str, $start);
+        }
+        $start = $pos !== false ? $pos : 0;
+    }
+
+    // Chop the string from $start to strlen($str).
+    $str = substr($str, $start);
+
+    // If $end is a string, do exactly what was done to $start, above.
+    if (is_string($end)) {
+        if ($end{0} == '-') {
+            $end = substr($end, 1);
+            $found = false;
+            $pos = 0;
+            while(($curr_pos = strpos($str, $end, $pos)) !== false) {
+                $found = true;
+                $pos = $curr_pos + 1;
+            }
+            if ($found === false) {
+                $pos = false;
+            } else {
+                $pos -= 1;
+            }
+        } else {
+            if ($end{0} . $end{1} == '\-') {
+                $end = substr($end, 1);
+            }
+            $pos = $strpos($str, $end);
+        }
+        $end = $pos !== false ? $pos : strlen($str);
+    }
+
+    // Since $str has already been chopped at $start, we can pass 0 as the new $start for substr()
+    return substr($str, 0, $end);
+}
+
 ?>
   </form>
  </body>

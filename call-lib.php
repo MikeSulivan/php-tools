@@ -218,18 +218,23 @@ class ZuoraAPIHelper {
         } else {
             $body .= " and";
         }
+        // Remove duplicates so that multiple records are not returned across discreet queries in the set.
+        $fieldValues = array_unique($fieldValues);
         $querySet = array();
         for ($i = 0; $i < count($fieldValues); $i += $MAX_QUERY_WHERE_CLAUSE_COUNT) {
             $maxValue = min(count($fieldValues), $i + $MAX_QUERY_WHERE_CLAUSE_COUNT);
             $tmpQuery = $body;
+            $initial = true;
             for ($j = $i; $j < $maxValue; $j++) {
                 $value = $fieldValues[$j];
-                if (strlen($value) <= 0)
+                if (strlen($value) <= 0) {
                     continue;
-                if ($j > $i) {
+                }
+                if (!$initial) {
                     $tmpQuery .= " or";
                 }
                 $tmpQuery .= " " . $fieldStr . "='" . $value . "'";
+                $initial = false;
             }
             $querySet[] = $tmpQuery;
         }
@@ -302,8 +307,6 @@ class ZuoraAPIHelper {
      try {
         $soapRequest = createRequest(ZuoraAPIHelper::$header->data["session"], $payload);
 
-        $soapMethod = getMethod($soapRequest);
-
         if ($debug) {
            print "\n\nRequest:\n" . xml_pretty_printer($soapRequest);
         }
@@ -331,6 +334,8 @@ class ZuoraAPIHelper {
           $timeBefore = microtime(true);
           $result = $client->__soapCall($soapMethod, array(), null, $header);   
           $timeAfter = microtime(true);
+
+//echo "Request: " . $soapRequest . " Duration: " . ($timeAfter - $timeBefore)/60 . " minutes.\n";
        
           if ($debug) {
              print "\nResult:\n" . xml_pretty_printer($client->myResponse);
@@ -458,7 +463,7 @@ class ZuoraAPIHelper {
 
     ################################################################################
     public static function xmlspecialchars($text) {
-    	 return str_replace('&#039;', '&apos;', htmlspecialchars($text, ENT_QUOTES, 'UTF-8',false));
+    	 return str_replace('&#039;', '&apos;', htmlspecialchars(str_replace('&','&amp;',$text), ENT_QUOTES, 'UTF-8', false));
     }
 
     ################################################################################
@@ -535,28 +540,36 @@ class ZuoraAPIHelper {
     public static function createRequestWithNS($sessionKey, $payload, $apiNamespace, $objectNamespace) {
        global $defaultApiNamespaceURL;
        global $defaultObjectNamespaceURL;
-       return ZuoraAPIHelper::createRequestAndHeadersWithNS($sessionKey, ZuoraAPIHelper::$batchSize, $payload, $apiNamespace, $objectNamespace);
+       return ZuoraAPIHelper::createRequestAndHeadersWithNS($sessionKey, ZuoraAPIHelper::$batchSize, array(), $payload, $apiNamespace, $objectNamespace);
     }
 
     ################################################################################
-    public static function createRequestAndHeadersWithNS($sessionKey, $batchSize, $payload, $apiNamespace, $objectNamespace) {
+    public static function createRequestAndHeadersWithNS($sessionKey, $batchSize, $callOptions, $payload, $apiNamespace, $objectNamespace) {
        global $defaultApiNamespaceURL;
        global $defaultObjectNamespaceURL;
 
-       $headerParams = array("session"=>$sessionKey);
-       $sessionHeader = "<" . $objectNamespace . ":SessionHeader>";
-       foreach ($headerParams as $paramKey => $paramValue) {
-           $sessionHeader .= "<" . $objectNamespace . ":" . $paramKey . ">" . $paramValue . "</" . $objectNamespace . ":" . $paramKey . ">";
+       if (count(array_keys($callOptions)) > 0) {
+       	   $sessionHeader = "<" . $apiNamespace . ":CallOptions>";
+       	   foreach ($callOptions as $paramKey => $paramValue) {
+       	       $sessionHeader .= "<" . $apiNamespace . ":" . $paramKey . ">" . $paramValue . "</" . $apiNamespace . ":" . $paramKey . ">";
+       	   }
+       	   $sessionHeader .= "</" . $apiNamespace . ":CallOptions>";
        }
-       $sessionHeader .= "</" . $objectNamespace . ":SessionHeader>";
+
+       $headerParams = array("session"=>$sessionKey);
+       $sessionHeader .= "<" . $apiNamespace . ":SessionHeader>";
+       foreach ($headerParams as $paramKey => $paramValue) {
+           $sessionHeader .= "<" . $apiNamespace . ":" . $paramKey . ">" . $paramValue . "</" . $apiNamespace . ":" . $paramKey . ">";
+       }
+       $sessionHeader .= "</" . $apiNamespace . ":SessionHeader>";
 
        if ($batchSize > 0) {
        	   $headerOptions = array("batchSize"=>$batchSize);
-       	   $sessionHeader .= "<" . $objectNamespace . ":QueryOptions>";
+       	   $sessionHeader .= "<" . $apiNamespace . ":QueryOptions>";
        	   foreach ($headerOptions as $paramKey => $paramValue) {
-       	       $sessionHeader .= "<" . $objectNamespace . ":" . $paramKey . ">" . $paramValue . "</" . $objectNamespace . ":" . $paramKey . ">";
+       	       $sessionHeader .= "<" . $apiNamespace . ":" . $paramKey . ">" . $paramValue . "</" . $apiNamespace . ":" . $paramKey . ">";
        	   }
-       	   $sessionHeader .= "</" . $objectNamespace . ":QueryOptions>";
+       	   $sessionHeader .= "</" . $apiNamespace . ":QueryOptions>";
        }
 
        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?><SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:" . $objectNamespace . "=\"" . $defaultObjectNamespaceURL . "\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:" . $apiNamespace . "=\"" . $defaultApiNamespaceURL . "\"><SOAP-ENV:Header>" . $sessionHeader ."</SOAP-ENV:Header><SOAP-ENV:Body>" . $payload . "</SOAP-ENV:Body></SOAP-ENV:Envelope>";
@@ -698,7 +711,7 @@ class ZuoraAPIHelper {
        $node = $xml_obj->xpath("//default:definitions/default:portType/default:operation");
        $names = array();
        for ($i = 0; $i < count($node); $i++) {
-           $names[] = $node[$i]->attributes()->name;
+           $names[] = (string) $node[$i]->attributes()->name;
        }
        return $names;
     }
@@ -716,7 +729,7 @@ class ZuoraAPIHelper {
        $node = $xml_obj->xpath("//default:definitions/default:types/xs:schema[@targetNamespace='" . $namespace . "']/xs:complexType");
        $names = array();
        for ($i = 0; $i < count($node); $i++) {
-           $names[] = $node[$i]->attributes()->name;
+           $names[] = (string) $node[$i]->attributes()->name;
        }
        return $names;
     }
