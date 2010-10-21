@@ -3,12 +3,13 @@ Zuora PHP Toolkit
 INTRODUCTION
 ------------
 
-This utility requires PHP with add-ons.
+The PHP toolkit provides useful utilities for Zuora developers to introspect, pull data from and develop
+against the Zuora APIs.
 
 REQUIREMENTS
 ------------
 
-The below are required to run this package.
+This utility requires PHP with add-ons. Furthermore, the below are required to run this package.
 
 PHP 5.2.9
 cURL (for secure requests over HTTPS)
