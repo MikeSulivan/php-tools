@@ -3,8 +3,7 @@ Zuora PHP Toolkit
 INTRODUCTION
 ------------
 
-The PHP toolkit provides useful utilities for Zuora developers to introspect, pull data from and develop
-against the Zuora APIs.
+The PHP toolkit provides useful utilities for Zuora developers to introspect, pull data from and develop against the Zuora APIs.
 
 REQUIREMENTS
 ------------
@@ -34,7 +33,12 @@ subscribeV9.xml- subscribe() template, version 9
 subscribeV11.xml - subscribe() template, version 11
 subscribeWithExistingAccount.xml - subscribeWithExistingAccount() template, latest version
 subscribeWithExistingAccountV9.xml- subscribe() template, version 9
-zuora-19.0-sandbox-AllOptions.wsdl - latest WSDL, sandbox
+zuora-19.0-sandbox-AllOptions.wsdl - v19 WSDL, sandbox
+zuora-25.0-sandbox-AllOptions.wsdl - v25 WSDL, sandbox
+zuora-27.0-sandbox-AllOptions.wsdl - v27 WSDL, sandbox
+loader/index.php - Loader utility front page
+loader/call.php - Loader command line code
+loader/settings.php - Loader common settings file
 
 INSTALLATION INSTRUCTIONS
 -------------------------
@@ -55,7 +59,7 @@ f) In the Xampp directory, extract the zip file (Zuora source) under a folder na
 
 g) Make sure Apache is running.
 
-h) In a web browser type http://localhost/api-util/. This should load up the API Utility for Zuora.
+h) In a web browser type http://localhost/api-util/. This should load up the API Utility for Zuora. http://localhost/api-util/loader/ should load the API Loader.
 
 DOCUMENTATION & SUPPORT
 -----------------------

@@ -579,7 +579,7 @@ class ZuoraAPIHelper {
     public static function getSoapAddress($wsdl) {
        $xml_obj = getXMLElementFromWSDL($wsdl);
        $node = $xml_obj->xpath("//default:definitions/default:service/default:port/soap:address");
-       return $node[0]->attributes()->location;
+       return (string) $node[0]->attributes()->location;
     }
 
     ################################################################################
@@ -786,11 +786,11 @@ class ZuoraAPIHelper {
        return $payload;
        / /*/
        $fieldNames = ZuoraAPIHelper::getFieldList($wsdl, $object);
-       return ZuoraAPIHelper::printXMLWithNS($call, $object, $fieldNames, array(), $debug, $offset, $apiNamespace, $objectNamespace);
+       return ZuoraAPIHelper::printXMLWithNS($call, $object, $fieldNames, array(), $debug, $offset, $apiNamespace, $objectNamespace, true);
     }
 
     ################################################################################
-    public static function printXMLWithNS($call, $object, $fieldNames, $values, $debug, $offset, $apiNamespace, $objectNamespace) {
+    public static function printXMLWithNS($call, $object, $fieldNames, $values, $debug, $offset, $apiNamespace, $objectNamespace, $emptyValuesOk) {
        $ID_FIELD = "Id";
        $index = 0;
 
@@ -832,7 +832,11 @@ class ZuoraAPIHelper {
            $payload .= str_repeat(" ", $offset) . " <" . $apiNamespace . ":zObjects xsi:type=\"" . $objectNamespace . ":" . $object . "\">\n";
            for ($i = 0; $i < count($fieldNames); $i++) {
                $field = $fieldNames[$i];
-               $payload .= str_repeat(" ", $offset) . "   <" . $objectNamespace . ":" . $field . ">" . $data[$field] . "</" . $objectNamespace . ":" . $field . ">\n";
+	       if (!$emptyValuesOk && ($data[$field] == null || strlen($data[$field]) <= 0)) {
+	           continue;
+	       } else {
+                   $payload .= str_repeat(" ", $offset) . "   <" . $objectNamespace . ":" . $field . ">" . $data[$field] . "</" . $objectNamespace . ":" . $field . ">\n";
+               }
            }
            $payload .= str_repeat(" ", $offset) . " </" . $apiNamespace . ":zObjects>\n";
 	   $index++;
@@ -1326,4 +1330,121 @@ class MySoapClient extends SoapClient {
 	return $this->myResponse;
     }
 }
+
+################################################################################
+/** Quoted from http://php.net/manual/en/function.substr.php, submitted by egingell at sisna dot com on 19-Oct-2006 10:19
+ * string substrpos(string $str, mixed $start [[, mixed $end], boolean $ignore_case])
+ *
+ * If $start is a string, substrpos will return the string from the position of the first occuring $start to $end
+ *
+ * If $end is a string, substrpos will return the string from $start to the position of the first occuring $end
+ *
+ * If the first character in (string) $start or (string) $end is '-', the last occuring string will be used.
+ *
+ * If $ignore_case is true, substrpos will not care about the case.
+ * If $ignore_case is false (or anything that is not (boolean) true, the function will be case sensitive.
+ *        Both of the above: only applies if either $start or $end are strings.
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it.', 5, '5');
+ *        // Prints 'is a string with 01234';
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it.', '5', 5);
+ *        // Prints '56789'
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-string')
+ *        // Prints 's is a string with 0123456789 numbers in it and two '
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-STRING', true)
+ *        // Prints 's is a string with 0123456789 numbers in it and two '
+ *
+ * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-STRING', false)
+ *        // Prints 's is a string with 0123456789 numbers in it and two strings.'
+ *
+ * Warnings:
+ *        Since $start and $end both take either a string or an integer:
+ *            If the character or string you are searching $str for is a number, pass it as a quoted string.
+ *        If $end is (integer) 0, an empty string will be returned.
+ *        Since this function takes negative strings ('-search_string'):
+ *            If the string your using in $start or $end is a '-' or begins with a '-' escape it with a '\'.
+ *            This only applies to the *first* character of $start or $end.
+ */
+
+// Define stripos() if not defined (PHP < 5).
+if (!is_callable("stripos")) {
+    function stripos($str, $needle, $offset = 0) {
+        return strpos(strtolower($str), strtolower($needle), $offset);
+    }
+}
+
+function substrpos($str, $start, $end = false, $ignore_case = false) {
+    // Use variable functions
+    if ($ignore_case === true) {
+        $strpos = 'stripos'; // stripos() is included above in case it's not defined (PHP < 5).
+    } else {
+        $strpos = 'strpos';
+    }
+
+    // If end is false, set it to the length of $str
+    if ($end === false) {
+        $end = strlen($str);
+    }
+
+    // If $start is a string do what's needed to make it an integer position for substr().
+    if (is_string($start)) {
+        // If $start begins with '-' start processing until there's no more matches and use the last one found.
+        if ($start{0} == '-') {
+            // Strip off the '-'
+            $start = substr($start, 1);
+            $found = false;
+            $pos = 0;
+            while(($curr_pos = $strpos($str, $start, $pos)) !== false) {
+                $found = true;
+                $pos = $curr_pos + 1;
+            }
+            if ($found === false) {
+                $pos = false;
+            } else {
+                $pos -= 1;
+            }
+        } else {
+            // If $start begins with '\-', strip off the '\'.
+            if ($start{0} . $start{1} == '\-') {
+                $start = substr($start, 1);
+            }
+            $pos = $strpos($str, $start);
+        }
+        $start = $pos !== false ? $pos : 0;
+    }
+
+    // Chop the string from $start to strlen($str).
+    $str = substr($str, $start);
+
+    // If $end is a string, do exactly what was done to $start, above.
+    if (is_string($end)) {
+        if ($end{0} == '-') {
+            $end = substr($end, 1);
+            $found = false;
+            $pos = 0;
+            while(($curr_pos = strpos($str, $end, $pos)) !== false) {
+                $found = true;
+                $pos = $curr_pos + 1;
+            }
+            if ($found === false) {
+                $pos = false;
+            } else {
+                $pos -= 1;
+            }
+        } else {
+            if ($end{0} . $end{1} == '\-') {
+                $end = substr($end, 1);
+            }
+            $pos = $strpos($str, $end);
+        }
+        $end = $pos !== false ? $pos : strlen($str);
+    }
+
+    // Since $str has already been chopped at $start, we can pass 0 as the new $start for substr()
+    return substr($str, 0, $end);
+}
+
 ?>

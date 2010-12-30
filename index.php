@@ -1,7 +1,7 @@
 <?php
 include("call-lib.php");
 
-$DEFAULT_WSDL = 'zuora-25.0-sandbox-AllOptions.wsdl';
+$DEFAULT_WSDL = 'zuora-27.0-sandbox-AllOptions.wsdl';
 $SUBSCRIBE_TEMPLATE = array(1=>array(
               			     "version"=>'1.0',
               			     "subscribe"=>'subscribe.xml',
@@ -31,6 +31,10 @@ if (array_key_exists('_submit_check', $_POST)) {
    $_SESSION['api-batchSize'] = $_POST['api-batchSize'];
    $_SESSION['template-op'] = "";//$_POST['template-op'];
    $_SESSION['template-object'] = "";//$_POST['template-object'];
+   $_SESSION['service_url'] = $_POST['service_url'];
+   if (strlen($_SESSION['service_url']) <= 0) {
+      unset($_SESSION['service_url']);
+   }
 
    // Nuke the session if the Clear button was pressed.
    if (isset($_POST['reset'])) {
@@ -42,6 +46,7 @@ if (array_key_exists('_submit_check', $_POST)) {
       unset($_SESSION['api-batchSize']);
       unset($_SESSION['template-op']);
       unset($_SESSION['template-object']);
+      unset($_SESSION['service_url']);
    }
 }
 
@@ -69,6 +74,9 @@ if (!isset($_SESSION['template-op'])) {
 }
 if (!isset($_SESSION['template-object'])) {
    $_SESSION['template-object'] = "";
+}
+if (!isset($_SESSION['service_url'])) {
+   $_SESSION['service_url'] = ZuoraAPIHelper::getSoapAddress($_SESSION['wsdl']);
 }
 
 function cleanUpXML($xml) {
@@ -109,6 +117,7 @@ $errorString = "";
 $locationString = "";
 $requestString = "";
 $responseString = "";
+$sessionIdString = "";
 $timings = array();
 
 $outputCSV = false;
@@ -168,10 +177,17 @@ if (isset($_POST['submit'])) {
     if ($method == "query" || $method == "api") {
        	try {
        	    $client = createClient($wsdl, $debug);
+            $client->setLocation($_SESSION['service_url']);
+       	    $locationString = $client->myLocation;
 
        	    $header = login($client, $username, $password, $debug);
+            if (!$_POST['sessionId-refresh']) {
+                $header->data["session"] = $_POST['sessionId'];
+            }
+	    $sessionIdString = $header->data["session"];
             
        	    $soapRequest = ZuoraAPIHelper::createRequestAndHeadersWithNS($header->data["session"], $_SESSION['api-batchSize'], $callOptions, $payload, $_SESSION['api-ns'], $_SESSION['object-ns']);
+       	    $requestString = xml_pretty_printer($soapRequest, true);
 
             $timeBefore = microtime(true);
 	    $xml = ZuoraAPIHelper::callAPIWithClient($client, $header, $soapRequest, $debug);
@@ -188,9 +204,7 @@ if (isset($_POST['submit'])) {
 
 	        ZuoraAPIHelper::getCSVData($xml_obj, $uniqueHeaders, true, true);
        	    } else {
-       	    	$locationString = $client->myLocation;
        	    	$responseString = xml_pretty_printer($xml, true);
-       	    	$requestString = xml_pretty_printer($soapRequest, true);
        	    }
 
 	    $queryLocator = ZuoraAPIHelper::getQueryLocator($xml);
@@ -226,7 +240,7 @@ if (isset($_POST['submit'])) {
   <title>Z-Commerce API Utility</title>
  </head>
  <body>
-  <form method="post" action=".">
+  <form name="main" method="post" action=".">
    <input type="hidden" name="_submit_check" value="1"/>
 
 <?php
@@ -313,6 +327,7 @@ if (strlen($call) > 0) {
 <input type="radio" value="pp" name="method"/>
 <?php } ?>
 </td></tr>
+<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
 </table>
 
 </td>
@@ -320,7 +335,8 @@ if (strlen($call) > 0) {
 <td>
 <table>
 <tr>
-<td><input type="submit" value="WSDL" name="wsdl-download"/></td><td><select name="wsdl">
+<td><input type="submit" value="WSDL" name="wsdl-download"/></td>
+<td><select name="wsdl" onchange="document.main.service_url.value=''">
 <?php
 $wsdl_files = dirList('.');
 function cmp($a, $b) {
@@ -347,11 +363,17 @@ foreach ($wsdl_files as $wsdl_filename) {
 </select></td></tr>
 <tr><td>Username:</td><td><input type="text" size="30" name="username" value="<?php echo $_POST['username'] ?>"/></td></tr>
 <tr><td>Password:</td><td><input type="password" size="30" name="password" value=""/></td></tr>
+<tr><td>Session Id:</td><td><input type="sessionId" size="40" name="sessionId" value="<?php echo $sessionIdString ?>"/>&nbsp;Refresh?<input type="checkbox" name="sessionId-refresh" value="true" checked="true"/></td></tr>
 </table>
 </td>
 
 <td>&nbsp;</td>
 <td>
+<table>
+<tr><td>Location:&nbsp;<input type="text" size="55" name="service_url" value="<?php echo $_SESSION['service_url'] ?>"/></td></tr>
+<tr><td>
+<table>
+<tr><td>
 <table>
 <tr><td>Query Batch Size&nbsp;<input type="text" size="4" name="api-batchSize" value="<?php echo $_SESSION['api-batchSize'] ?>"/></td></tr>
 <tr><td>&nbsp;*&nbsp;Default thru v5 100, v6+ 2000.</td></tr>
@@ -366,6 +388,12 @@ foreach ($wsdl_files as $wsdl_filename) {
 <tr><td>&nbsp;<?php echo $defaultApiNamespaceURL ?></td><td>&nbsp;</td><td><input type="text" size="3" name="api-ns" value="<?php echo $_SESSION['api-ns'] ?>"/></td></tr>
 <tr><td>&nbsp;<?php echo $defaultObjectNamespaceURL ?></td><td>&nbsp;</td><td><input type="text" size="3" name="object-ns" value="<?php echo $_SESSION['object-ns'] ?>"/></td></tr>
 </table>
+
+</td></tr>
+</table>
+
+</td></tr>
+</table>
 </td>
 
 </tr>
@@ -376,8 +404,8 @@ foreach ($wsdl_files as $wsdl_filename) {
 Enter your query text or call xml here:<br />
 <textarea rows="10" cols="60" name="body" wrap="virtual"><?php echo ZuoraAPIHelper::xmlspecialchars($_SESSION['body']) ?></textarea><br />
 <input type="submit" value="Submit" name="submit"/><input type="submit" value="Clear" name="reset"/>
-<input type="checkbox" name="csv">CSV Output&nbsp;
-<input type="checkbox" name="queryMore">Use QueryMore to get all results<br />
+<input type="checkbox" name="csv">CSV Output</input>&nbsp;
+<input type="checkbox" name="queryMore">Use QueryMore to get all results</input><br />
 </td>
 <td>
 <table>
@@ -417,6 +445,9 @@ if (isset($_POST['submit'])) {
     // Report any errors.
     if ($errorString) {
        echo "<p><b>Exception:</b> " . $errorString . "</p>\n";
+       echo "Location: " . $locationString . "<br>\n";
+       //echo "Response:" . $responseString . "\n";
+       echo "Request:" . $requestString . "\n";
        $errorString = "";
     } else {
         if (!$outputCSV) {
@@ -434,125 +465,6 @@ if (isset($_POST['submit'])) {
         }
     }
 }
-?>
-
-<?php
-
-/** Quoted from http://php.net/manual/en/function.substr.php, submitted by egingell at sisna dot com on 19-Oct-2006 10:19
- * string substrpos(string $str, mixed $start [[, mixed $end], boolean $ignore_case])
- *
- * If $start is a string, substrpos will return the string from the position of the first occuring $start to $end
- *
- * If $end is a string, substrpos will return the string from $start to the position of the first occuring $end
- *
- * If the first character in (string) $start or (string) $end is '-', the last occuring string will be used.
- *
- * If $ignore_case is true, substrpos will not care about the case.
- * If $ignore_case is false (or anything that is not (boolean) true, the function will be case sensitive.
- *        Both of the above: only applies if either $start or $end are strings.
- *
- * echo substrpos('This is a string with 0123456789 numbers in it.', 5, '5');
- *        // Prints 'is a string with 01234';
- *
- * echo substrpos('This is a string with 0123456789 numbers in it.', '5', 5);
- *        // Prints '56789'
- *
- * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-string')
- *        // Prints 's is a string with 0123456789 numbers in it and two '
- *
- * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-STRING', true)
- *        // Prints 's is a string with 0123456789 numbers in it and two '
- *
- * echo substrpos('This is a string with 0123456789 numbers in it and two strings.', -60, '-STRING', false)
- *        // Prints 's is a string with 0123456789 numbers in it and two strings.'
- *
- * Warnings:
- *        Since $start and $end both take either a string or an integer:
- *            If the character or string you are searching $str for is a number, pass it as a quoted string.
- *        If $end is (integer) 0, an empty string will be returned.
- *        Since this function takes negative strings ('-search_string'):
- *            If the string your using in $start or $end is a '-' or begins with a '-' escape it with a '\'.
- *            This only applies to the *first* character of $start or $end.
- */
-
-// Define stripos() if not defined (PHP < 5).
-if (!is_callable("stripos")) {
-    function stripos($str, $needle, $offset = 0) {
-        return strpos(strtolower($str), strtolower($needle), $offset);
-    }
-}
-
-function substrpos($str, $start, $end = false, $ignore_case = false) {
-    // Use variable functions
-    if ($ignore_case === true) {
-        $strpos = 'stripos'; // stripos() is included above in case it's not defined (PHP < 5).
-    } else {
-        $strpos = 'strpos';
-    }
-
-    // If end is false, set it to the length of $str
-    if ($end === false) {
-        $end = strlen($str);
-    }
-
-    // If $start is a string do what's needed to make it an integer position for substr().
-    if (is_string($start)) {
-        // If $start begins with '-' start processing until there's no more matches and use the last one found.
-        if ($start{0} == '-') {
-            // Strip off the '-'
-            $start = substr($start, 1);
-            $found = false;
-            $pos = 0;
-            while(($curr_pos = $strpos($str, $start, $pos)) !== false) {
-                $found = true;
-                $pos = $curr_pos + 1;
-            }
-            if ($found === false) {
-                $pos = false;
-            } else {
-                $pos -= 1;
-            }
-        } else {
-            // If $start begins with '\-', strip off the '\'.
-            if ($start{0} . $start{1} == '\-') {
-                $start = substr($start, 1);
-            }
-            $pos = $strpos($str, $start);
-        }
-        $start = $pos !== false ? $pos : 0;
-    }
-
-    // Chop the string from $start to strlen($str).
-    $str = substr($str, $start);
-
-    // If $end is a string, do exactly what was done to $start, above.
-    if (is_string($end)) {
-        if ($end{0} == '-') {
-            $end = substr($end, 1);
-            $found = false;
-            $pos = 0;
-            while(($curr_pos = strpos($str, $end, $pos)) !== false) {
-                $found = true;
-                $pos = $curr_pos + 1;
-            }
-            if ($found === false) {
-                $pos = false;
-            } else {
-                $pos -= 1;
-            }
-        } else {
-            if ($end{0} . $end{1} == '\-') {
-                $end = substr($end, 1);
-            }
-            $pos = $strpos($str, $end);
-        }
-        $end = $pos !== false ? $pos : strlen($str);
-    }
-
-    // Since $str has already been chopped at $start, we can pass 0 as the new $start for substr()
-    return substr($str, 0, $end);
-}
-
 ?>
   </form>
  </body>
