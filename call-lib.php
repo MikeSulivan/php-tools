@@ -1,29 +1,29 @@
 <?php
-/*    Copyright (c) 2010 Zuora, Inc.
- *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of 
- *   this software and associated documentation files (the "Software"), to use copy, 
- *   modify, merge, publish the Software and to distribute, and sublicense copies of 
- *   the Software, provided no fee is charged for the Software.  In addition the
- *   rights specified above are conditioned upon the following:
- *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
- *
- *   Zuora, Inc. or any other trademarks of Zuora, Inc.  may not be used to endorse
- *   or promote products derived from this Software without specific prior written
- *   permission from Zuora, Inc.
- *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *   FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
- *   ZUORA, INC. BE LIABLE FOR ANY DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES
- *   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *   ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+/* Copyright (c) 2011 Zuora, Inc.
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy of
+* this software and associated documentation files (the "Software"), to use copy,
+* modify, merge, publish the Software and to distribute, and sublicense copies of
+* the Software, provided no fee is charged for the Software. In addition the
+* rights specified above are conditioned upon the following:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* Zuora, Inc. or any other trademarks of Zuora, Inc. may not be used to endorse
+* or promote products derived from this Software without specific prior written
+* permission from Zuora, Inc.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
+* ZUORA, INC. BE LIABLE FOR ANY DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+* ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 //Globals
 $maxZObjectCount = 50;
@@ -331,10 +331,10 @@ class ZuoraAPIHelper {
     public static function callAPIWithSession($payload, $debug) {
 
      try {
-        $soapRequest = createRequest(ZuoraAPIHelper::$header->data["session"], $payload);
+        $soapRequest = ZuoraAPIHelper::createRequest(ZuoraAPIHelper::$header->data["session"], $payload);
 
         if ($debug) {
-           print "\n\nRequest:\n" . xml_pretty_printer($soapRequest);
+           print "\n\nRequest:\n" . ZuoraAPIHelper::xml_pretty_printer($soapRequest);
         }
 
         return callAPIWithClient(ZuoraAPIHelper::$client, ZuoraAPIHelper::$header, $soapRequest, $debug);
@@ -349,10 +349,10 @@ class ZuoraAPIHelper {
        global $maxZObjectCount;
        try {
           $client->myRequest = $soapRequest;   
-          $soapMethod = getMethod($soapRequest);
+          $soapMethod = ZuoraAPIHelper::getMethod($soapRequest);
        
           // check that we're not trying to create more than the maximum count of objects.
-          $createCount = getZObjectCount($soapRequest, $soapMethod);
+          $createCount = ZuoraAPIHelper::getZObjectCount($soapRequest, $soapMethod);
           if ($soapMethod == "create" && $createCount > $maxZObjectCount) {
              die("\n\nERROR: zObjects maximum count of " . $maxZObjectCount . " exceeded. Actual count found: " . $createCount . ".");
           }
@@ -364,7 +364,7 @@ class ZuoraAPIHelper {
 //echo "Request: " . $soapRequest . " Duration: " . ($timeAfter - $timeBefore)/60 . " minutes.\n";
        
           if ($debug) {
-             print "\nResult:\n" . xml_pretty_printer($client->myResponse);
+             print "\nResult:\n" . ZuoraAPIHelper::xml_pretty_printer($client->myResponse);
              print "\nResponse Time: " . ($timeAfter - $timeBefore);
           }
        
@@ -377,7 +377,7 @@ class ZuoraAPIHelper {
     ################################################################################
     public static function checkLogin($wsdl, $username, $password, $debug){
 
-     	$location = getSoapAddress($wsdl, $debug);
+     	$location = ZuoraAPIHelper::getSoapAddress($wsdl, $debug);
      	$tempLoginToken = $location . $username;
      	try {
      	    if (((microtime(true) - ZuoraAPIHelper::$lastLoginTime) > 600)
@@ -386,8 +386,8 @@ class ZuoraAPIHelper {
      	        if ($debug) {
      	      	    print "NOTE: Logging in.\n";
      	        }
-     	        ZuoraAPIHelper::$client = createClient($wsdl, $debug);
-     	        ZuoraAPIHelper::$header = login(ZuoraAPIHelper::$client, $username, $password, $debug);
+     	        ZuoraAPIHelper::$client = ZuoraAPIHelper::createClient($wsdl, $debug);
+     	        ZuoraAPIHelper::$header = ZuoraAPIHelper::login(ZuoraAPIHelper::$client, $username, $password, $debug);
      	        ZuoraAPIHelper::$lastLoginTime = microtime(true);
      	    }
      	} catch (Exception $e) {
@@ -401,11 +401,10 @@ class ZuoraAPIHelper {
     public static function loginWithSession($wsdl, $session, $debug){
        global $defaultApiNamespaceURL;
 
-       ZuoraAPIHelper::$client = createClient($wsdl, $debug);
+       ZuoraAPIHelper::$client = ZuoraAPIHelper::createClient($wsdl, $debug);
 
        # set the authentication
-       $sessionVal = array('session'=>$session);
-       ZuoraAPIHelper::$header = new SoapHeader($defaultApiNamespaceURL,'SessionHeader',$sessionVal);
+       ZuoraAPIHelper::$header = ZuoraAPIHelper::getHeader($session);
        return true;
     }
 
@@ -420,7 +419,6 @@ class ZuoraAPIHelper {
 
     ################################################################################
     public static function login($client, $username, $password, $debug){
-       global $defaultApiNamespaceURL;
 
        # do the login
        $login = array(
@@ -439,7 +437,14 @@ class ZuoraAPIHelper {
        }
 
        # set the authentication
-       $sessionVal = array('session'=>$session);
+       return ZuoraAPIHelper::getHeader($session);
+    }
+
+    ################################################################################
+    public static function getHeader($sessionId){
+       global $defaultApiNamespaceURL;
+
+       $sessionVal = array('session'=>$sessionId);
        $header = new SoapHeader($defaultApiNamespaceURL,
     				'SessionHeader',
     				$sessionVal);
@@ -549,7 +554,7 @@ class ZuoraAPIHelper {
 
     ################################################################################
     public static function createClient($wsdl, $debug) {
-       $client = new MySoapClient($wsdl);
+       $client = new MySoapClient($wsdl, array('exceptions' => 0));
        $client->setLocation(getSoapAddress($wsdl));
        $client->myDebug = $debug;
        return $client;
@@ -610,14 +615,14 @@ class ZuoraAPIHelper {
 
     ################################################################################
     public static function getAPIVersion($wsdl) {
-       $address = getSoapAddress($wsdl);
+       $address = ZuoraAPIHelper::getSoapAddress($wsdl);
        #Expecting: https://apisandbox.zuora.com/apps/services/a/8.0
        return substr(strrchr($address, "/"), 1);
     }
 
     ################################################################################
     public static function getXMLElementFromWSDL($wsdl) {
-       $xml = getFileContents($wsdl);
+       $xml = ZuoraAPIHelper::getFileContents($wsdl);
 
        $xml_obj = new SimpleXMLElement($xml);
        $xml_obj->registerXPathNamespace("default","http://schemas.xmlsoap.org/wsdl/");
@@ -694,7 +699,7 @@ class ZuoraAPIHelper {
 
           // Execute the API call.
           $timeBefore = microtime(true);
-          $batchResponse = callAPIWithClient($client, $header, $soapRequest, $debug);
+          $batchResponse = ZuoraAPIHelper::callAPIWithClient($client, $header, $soapRequest, $debug);
           $timeAfter = microtime(true);
 
           print " " . ($timeAfter - $timeBefore) . " secs - Done.";
@@ -733,7 +738,7 @@ class ZuoraAPIHelper {
 
     ################################################################################
     public static function getOperationListFromWSDL($wsdl, $debug) {
-       $xml_obj = getXMLElementFromWSDL($wsdl);
+       $xml_obj = ZuoraAPIHelper::getXMLElementFromWSDL($wsdl);
        $node = $xml_obj->xpath("//default:definitions/default:portType/default:operation");
        $names = array();
        for ($i = 0; $i < count($node); $i++) {
@@ -745,12 +750,12 @@ class ZuoraAPIHelper {
     ################################################################################
     public static function getObjectListFromWSDL($wsdl, $debug) {
        global $defaultObjectNamespaceURL;
-       return getAPIObjectListFromWSDL($wsdl, $defaultObjectNamespaceURL, $debug);
+       return ZuoraAPIHelper::getAPIObjectListFromWSDL($wsdl, $defaultObjectNamespaceURL, $debug);
     }
 
     ################################################################################
     public static function getAPIObjectListFromWSDL($wsdl, $namespace, $debug) {
-       $xml_obj = getXMLElementFromWSDL($wsdl);
+       $xml_obj = ZuoraAPIHelper::getXMLElementFromWSDL($wsdl);
        $xml_obj->registerXPathNamespace("xs","http://www.w3.org/2001/XMLSchema");
        $node = $xml_obj->xpath("//default:definitions/default:types/xs:schema[@targetNamespace='" . $namespace . "']/xs:complexType");
        $names = array();
@@ -764,7 +769,7 @@ class ZuoraAPIHelper {
     public static function printTemplate($wsdl, $call, $object, $debug, $offset) {
        global $defaultApiNamespace;
        global $defaultObjectNamespace;
-       return printTemplateWithNS( $wsdl, $call, $object, $debug, $offset, $defaultApiNamespace, $defaultObjectNamespace);
+       return ZuoraAPIHelper::printTemplateWithNS( $wsdl, $call, $object, $debug, $offset, $defaultApiNamespace, $defaultObjectNamespace);
     }
 
     ################################################################################
@@ -780,7 +785,7 @@ class ZuoraAPIHelper {
        }
 
        // Handle "create"/"update"/"query".
-       $fieldNames = getFieldList($wsdl, $object);
+       $fieldNames = ZuoraAPIHelper::getFieldList($wsdl, $object);
 
        if ($call == "query") {
           $payload = str_repeat(" ", $offset) . "<" . $apiNamespace . ":query>\n";
@@ -1110,7 +1115,7 @@ class ZuoraAPIHelper {
        global $defaultObjectNamespaceURL;
 
        $list = array();
-       $xml_obj = getXMLElementFromWSDL($wsdl);
+       $xml_obj = ZuoraAPIHelper::getXMLElementFromWSDL($wsdl);
        $xml_obj->registerXPathNamespace("xs","http://www.w3.org/2001/XMLSchema");
        $node = $xml_obj->xpath("//default:definitions/default:types/xs:schema[@targetNamespace='" . $defaultObjectNamespaceURL . "']/xs:complexType[@name='" . $object . "']");
 

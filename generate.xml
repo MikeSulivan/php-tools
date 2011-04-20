@@ -1,0 +1,10 @@
+<ns1:generate>
+    <ns1:zObjects>
+    	<ns2:AccountId></ns2:AccountId>
+    	<ns2:IncludesOneTime>True</ns2:IncludesOneTime>
+    	<ns2:IncludesRecurring>True</ns2:IncludesRecurring>
+    	<ns2:IncludesUsage>True</ns2:IncludesUsage>
+    	<ns2:InvoiceDate></ns2:InvoiceDate>
+    	<ns2:TargetDate></ns2:TargetDate>
+    </ns1:zObjects>
+</ns1:generate>
