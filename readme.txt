@@ -1,4 +1,4 @@
-/*    Copyright (c) 2010 Zuora, Inc.
+/*    Copyright (c) 2011 Zuora, Inc.
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of 
  *   this software and associated documentation files (the "Software"), to use copy, 
@@ -34,18 +34,13 @@ The PHP toolkit provides useful utilities for Zuora developers to introspect, pu
 REQUIREMENTS
 ------------
 
-This utility requires PHP with add-ons. Furthermore, the below are required to run this package.
+This utility requires PHP with add-ons. The following are required to run this package.
 
-PHP 5.2.9
-cURL (for secure requests over HTTPS)
-Tidy
-SOAP
-
-These others may be required.
-
-OpenSSL
-XML-RPC
-XSL
+PHP 5.2.9+
+-SOAP
+-OpenSSL
+-XML-RPC
+-XSL
 
 CONTENTS
 --------
@@ -86,6 +81,21 @@ f) In the Xampp directory, extract the zip file (Zuora source) under a folder na
 g) Make sure Apache is running.
 
 h) In a web browser type http://localhost/api-util/. This should load up the API Utility for Zuora. http://localhost/api-util/loader/ should load the API Loader.
+
+POTENTIAL INSTALLATION ISSUES
+-----------------------------
+With the latest XAMPP (version 1.7.4), there are a couple of additional things that need to be done in the php.ini file located in the \xampp\php\ folder:
+
+-In the "Error Handling and Logging" section, error_reporting value needs to be changed to (preventing run time errors from displaying with the application):
+  error_reporting = E_ALL & ~E_NOTICE 
+
+-In the "Windows Extensions" section, some of the required extensions are commented out, specifically:
+  extension=php_openssl.dll
+  extension=php_soap.dll
+  extension=php_xmlrpc.dll
+  extension=php_xsl.dll
+
+-Also, it is possible that your enterprise is using a proxy, which will need to be configured, otherwise you'll get an "Unknown Host" error. Instructions on how to do this are not available at this time.
 
 DOCUMENTATION & SUPPORT
 -----------------------
