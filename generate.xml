@@ -1,5 +1,5 @@
 <ns1:generate>
-    <ns1:zObjects>
+    <ns1:zObjects xsi:type="ns2:Invoice">
     	<ns2:AccountId></ns2:AccountId>
     	<ns2:IncludesOneTime>True</ns2:IncludesOneTime>
     	<ns2:IncludesRecurring>True</ns2:IncludesRecurring>
