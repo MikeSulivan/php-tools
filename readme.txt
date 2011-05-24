@@ -95,7 +95,38 @@ With the latest XAMPP (version 1.7.4), there are a couple of additional things t
   extension=php_xmlrpc.dll
   extension=php_xsl.dll
 
--Also, it is possible that your enterprise is using a proxy, which will need to be configured, otherwise you'll get an "Unknown Host" error. Instructions on how to do this are not available at this time.
+Also, it is possible that your enterprise is using a proxy, which will need to be configured, otherwise you'll get an "Unknown Host" error. To set up a proxy with XAMPP (instructions taken from http://stackoverflow.com/questions/724599/setting-up-an-apache-proxy-with-authentication, adapted by Alexander Grinchik):
+
+-Uncomment the following lines in httpd.conf file (found in xampp/apache/conf/):
+  LoadModule proxy_module modules/mod_proxy.so
+  LoadModule proxy_http_module modules/mod_proxy_http.so
+
+-Include the following line in httpd.conf file:
+  # Implements a proxy/gateway for Apache.
+  Include "conf/extra/httpd-proxy.conf"
+
+-Create a new file in xampp/apache/conf/extra/ directory called httpd-proxy.conf with the following contents:
+#
+# Implements a proxy/gateway for Apache.
+# # Required modules: mod_proxy, mod_proxy_http
+#
+
+<IfModule proxy_module>
+<IfModule proxy_http_module>
+
+#
+# Reverse Proxy
+#
+ProxyRequests On
+ProxyVia On
+
+<Proxy *>
+    Order deny,allow
+    Allow from all
+</Proxy>
+
+</IfModule>
+</IfModule>
 
 DOCUMENTATION & SUPPORT
 -----------------------
