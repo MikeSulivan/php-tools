@@ -26,7 +26,7 @@
  */
 #Utility-wide Settings
 $WSDL_DIR = '..';
-$DEFAULT_WSDL = 'zuora-27.0-sandbox-AllOptions.wsdl';
+$DEFAULT_WSDL = 'zuora-38.0-sandbox-AllOptions.wsdl';
 $LOG_FILE = 'log.txt';
 $INPUT_FILE = 'input.txt';
 $OUTPUT_FILE = 'output.txt';

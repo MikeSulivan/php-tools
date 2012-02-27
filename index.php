@@ -27,7 +27,7 @@
 
 include("call-lib.php");
 
-$DEFAULT_WSDL = 'zuora-29.0-sandbox-AllOptions.wsdl';
+$DEFAULT_WSDL = 'zuora-38.0-sandbox-AllOptions.wsdl';
 $SUBSCRIBE_TEMPLATE = array(1=>array(
               			     "version"=>'1.0',
               			     "subscribe"=>'subscribe.xml',
@@ -44,16 +44,34 @@ $SUBSCRIBE_TEMPLATE = array(1=>array(
               			     "subscribeWithExistingAccount"=>'',
               			     "queryMore"=>'queryMore.xml',
                                      "generate"=>'generate.xml'),
+                            19=>array(
+              			     "version"=>'19.0',
+              			     "subscribe"=>'subscribeV11.xml',
+              			     "subscribeWithExistingAccount"=>'',
+              			     "queryMore"=>'queryMore.xml',
+                                     "generate"=>'generate.xml',
+                                     "getUserInfo"=>'getUserInfo.xml'),
                             25=>array(
               			     "version"=>'25.0',
               			     "subscribe"=>'subscribeV25.xml',
               			     "subscribeWithExistingAccount"=>'',
               			     "queryMore"=>'queryMore.xml',
-                                     "generate"=>'generate.xml')
+                                     "generate"=>'generate.xml',
+                                     "getUserInfo"=>'getUserInfo.xml'),
+                            29=>array(
+              			     "version"=>'29.0',
+              			     "subscribe"=>'subscribeV25.xml',
+              			     "subscribeWithExistingAccount"=>'',
+              			     "queryMore"=>'queryMore.xml',
+                                     "generate"=>'generate.xml',
+                                     "getUserInfo"=>'getUserInfo.xml',
+                                     "amend"=>'amend.xml')
 	                   );
 
 session_start();
 
+## CMB update - undefined variable issue
+$debug = false;
 // Test whether the form has been submitted.
 if (array_key_exists('_submit_check', $_POST)) {
    $_SESSION['method'] = $_POST['method'];
@@ -68,7 +86,8 @@ if (array_key_exists('_submit_check', $_POST)) {
    if (strlen($_SESSION['service_url']) <= 0) {
       unset($_SESSION['service_url']);
    }
-   if ($_POST['sessionId-refresh']) {
+	# CMB update - undefined index issue fixed by adding isset() test
+   if (isset($_POST['sessionId-refresh'])) {
       $_SESSION['sessionId-refresh'] = true;
    } else {
       $_SESSION['sessionId-refresh'] = false;
@@ -171,12 +190,14 @@ $responseString = "";
 $timings = array();
 
 $outputCSV = false;
-if ($_POST['csv']) {
+# CMB update - undefined index issue fixed by adding isset() test
+if (isset($_POST['csv'])) {
    $outputCSV = true;
 }
 
 $outputQM = false;
-if ($_POST['queryMore']) {
+# CMB update - undefined index issue fixed by adding isset() test
+if (isset($_POST['queryMore'])) {
    $outputQM = true;
 }
 
@@ -220,7 +241,7 @@ if (isset($_POST['submit'])) {
     }
 
     $callOptions = array();
-    if ($_POST['api-singleTxn']) {
+    if (isset($_POST['api-singleTxn'])) {
         $callOptions = array("useSingleTransaction"=>$_POST['api-singleTxn']);
     }
 
@@ -327,7 +348,7 @@ function popup(url)
  params += ', scrollbars=yes';
  params += ', status=no';
  params += ', toolbar=no';
- newwin=window.open('http://apidocs.developer.zuora.com/index.php/'+url,'windowname5', params);
+ newwin=window.open('http://knowledgecenter.zuora.com/C_Zuora_API_Developer\'s_Guide/G_API_Objects/'+url,'windowname5', params);
  if (window.focus) {newwin.focus()}
  return false;
 }
@@ -361,24 +382,38 @@ if (strlen($call) > 0) {
 
    try {
       $templateException = false;
-      $pos = strpos(strtolower($call),'subscribe');
+      $callStr = strtolower($call);
+      $pos = strpos($callStr,'subscribe');
       if ($pos === false && !$templateException) {
          $templateException = false;
       } else {
          $templateException = true;
       }
-      $pos = strpos(strtolower($call),'querymore');
+      $pos = strpos($callStr,'querymore');
       if ($pos === false && !$templateException) {
          $templateException = false;
       } else {
          $templateException = true;
       }
-      $pos = strpos(strtolower($call),'generate');
+      $pos = strpos($callStr,'generate');
       if ($pos === false && !$templateException) {
          $templateException = false;
       } else {
          $templateException = true;
       }
+      $pos = strpos($callStr,'getuserinfo');
+      if ($pos === false && !$templateException) {
+         $templateException = false;
+      } else {
+         $templateException = true;
+      }
+      $pos = strpos($callStr,'amend');
+      if ($pos === false && !$templateException) {
+         $templateException = false;
+      } else {
+         $templateException = true;
+      }
+
       if (!$templateException) {
          if (strlen($object) > 0) {
             $_SESSION['body'] = printTemplateWithNS($_SESSION['wsdl'], $call, $object, $debug, 0, $_SESSION['api-ns'], $_SESSION['object-ns']);

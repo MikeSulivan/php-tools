@@ -426,14 +426,17 @@ class ZuoraAPIHelper {
        		"password"=>$password
        );
 
+       $client->myDebug = 0;
        $result = $client->login($login);
-       if ($debug) var_dump($result);
+       $client->myDebug = $debug;
+       //if ($debug) var_dump($result);
 
        $session = $result->result->Session;
        $url = $result->result->ServerUrl;
        if ($debug) {
           print "\nSession: " . $session;
           print "\nServerUrl: " . $url;
+          print "\n";
        }
 
        # set the authentication
@@ -579,8 +582,9 @@ class ZuoraAPIHelper {
        global $defaultApiNamespaceURL;
        global $defaultObjectNamespaceURL;
 
+       $sessionHeader = "";
        if (count(array_keys($callOptions)) > 0) {
-       	   $sessionHeader = "<" . $apiNamespace . ":CallOptions>";
+       	   $sessionHeader .= "<" . $apiNamespace . ":CallOptions>";
        	   foreach ($callOptions as $paramKey => $paramValue) {
        	       $sessionHeader .= "<" . $apiNamespace . ":" . $paramKey . ">" . $paramValue . "</" . $apiNamespace . ":" . $paramKey . ">";
        	   }
@@ -650,7 +654,7 @@ class ZuoraAPIHelper {
     }
 
     ################################################################################
-    public static function bulkOperation($client, $header, $method, $payload, $itemCount, $debug, $htmlOutput=FALSE) {
+    public static function bulkOperation($client, $header, $method, $payload, $itemCount, $debug, $htmlOutput=FALSE, $zObjectCap=-1) {
 
        global $maxZObjectCount;
        global $defaultApiNamespaceURL;
@@ -666,18 +670,23 @@ class ZuoraAPIHelper {
        	  $nodeName = "ids";
        }
 
+       // Allow control over how many objects are submitted in one call.
+       if ($zObjectCap < 0) {
+           $zObjectCap = $maxZObjectCount;
+       }
+
        $soapRequest = createRequest($header->data["session"], $payload);
        $xml_obj = new SimpleXMLElement($soapRequest);
        $xml_obj->registerXPathNamespace("SOAP-ENV","http://schemas.xmlsoap.org/soap/envelope/");
        $xml_obj->registerXPathNamespace("ns1",$defaultApiNamespaceURL);
        $type = $xml_obj->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "/ns1:type");
 
-       // Iterate through the list of items, $maxZObjectCount at a time
-       for ($counter = 0; $counter < $itemCount; $counter += $maxZObjectCount) {
+       // Iterate through the list of items, $zObjectCap at a time
+       for ($counter = 0; $counter < $itemCount; $counter += $zObjectCap) {
 
           // Identify upper bound for this batch.
           $lowerBound = $counter + 1;
-          $upperBound = $counter + $maxZObjectCount;
+          $upperBound = $counter + $zObjectCap;
           if ($upperBound > $itemCount) {
              $upperBound = $itemCount;
           }
@@ -694,7 +703,7 @@ class ZuoraAPIHelper {
           }
           $batchPayload = $batchPayload . "</ns1:" . $method . ">\n";
 
-          print "Batch " . ceil($upperBound / $maxZObjectCount) . ": submitting ZObjects " . $lowerBound . "-" . $upperBound . " (" . count($batchNodes) . ")...";
+          print "Batch " . ceil($upperBound / $zObjectCap) . ": submitting ZObjects " . $lowerBound . "-" . $upperBound . " (" . count($batchNodes) . ")...";
           $soapRequest = createRequest($header->data["session"], $batchPayload);
 
           // Execute the API call.
@@ -712,23 +721,33 @@ class ZuoraAPIHelper {
           $xml_obj2 = new SimpleXMLElement($batchResponse);
           $xml_obj2->registerXPathNamespace("SOAP-ENV","http://schemas.xmlsoap.org/soap/envelope/");
           $xml_obj2->registerXPathNamespace("ns1",$defaultApiNamespaceURL);
-          $resultNodes = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result/ns1:Success");
+          $soapFaultNode = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault");
+          $resultNodes = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result/ns1:Success | //SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result/ns1:success");
 
           $successCount = 0;
           $errorCount = 0;
-          for ($i = 0; $i < count($resultNodes); $i++) {
-              $resultNode = $resultNodes[$i];
-    	      if ($resultNode[0] == "false") {
-    	         $errorCodeNodes = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result[position()=" . ($i+1) . "]/ns1:Errors/ns1:Code");
-    	         $errorMsgNodes = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result[position()=" . ($i+1) . "]/ns1:Errors/ns1:Message");
-    	         $errorCount++;
-    	         array_push($result["errorList"], array("index" => ($lowerBound + $i), "code" => (string)$errorCodeNodes[0], "message" => (string)$errorMsgNodes[0]));
-    	      } else {
-    	         $successCount++;
-    	      }    
+          if (count($soapFaultNode) > 0) {
+              $errorCount = count($batchNodes);
+              for ($i = 0; $i < count($batchNodes); $i++) {
+                 $faultCode = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/faultstring");
+                 $faultMessage = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/detail/Exception");
+                 array_push($result["errorList"], array("index" => ($lowerBound + $i), "code" => (string)$faultCode[0], "message" => (string)$faultMessage[0]));
+              }
+              array_push($result["batchList"], array("start" => $lowerBound, "end" => $upperBound, "size" => count($batchNodes), "successCount" => $successCount, "errorCount" => $errorCount));
+          } else {
+              for ($i = 0; $i < count($resultNodes); $i++) {
+                  $resultNode = $resultNodes[$i];
+    	          if (strcasecmp($resultNode,"false") == 0) {
+    	             $errorCodeNodes = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result[position()=" . ($i+1) . "]/ns1:errors/ns1:Code | //SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result[position()=" . ($i+1) . "]/ns1:Errors/ns1:Code");
+    	             $errorMsgNodes = $xml_obj2->xpath("//SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result[position()=" . ($i+1) . "]/ns1:errors/ns1:Message | //SOAP-ENV:Envelope/SOAP-ENV:Body/ns1:" . $method . "Response/ns1:result[position()=" . ($i+1) . "]/ns1:Errors/ns1:Message");
+    	             $errorCount++;
+    	             array_push($result["errorList"], array("index" => ($lowerBound + $i), "code" => (string)$errorCodeNodes[0], "message" => (string)$errorMsgNodes[0]));
+    	          } else {
+    	             $successCount++;
+    	          }    
+              }
+              array_push($result["batchList"], array("start" => $lowerBound, "end" => $upperBound, "size" => count($resultNodes), "successCount" => $successCount, "errorCount" => $errorCount));
           }
-          array_push($result["batchList"], array("start" => $lowerBound, "end" => $upperBound, "size" => count($resultNodes), "successCount" => $successCount, "errorCount" => $errorCount));
-
           $result["successCount"] += $successCount;
           $result["errorCount"] += $errorCount;
        }

@@ -41,11 +41,13 @@ $of = fopen($OUTPUT_FILE, 'a') or die("can't open output file");
 
 // Parameters to be expected:
 // 1) WSDL filename
-// 2) Username
-// 3) Password
-// 4) Operation
-// 5) Object
-// 6) Show request flag
+// 2) URL
+// 3) Username
+// 4) Password
+// 5) Operation
+// 6) Object
+// 7) (Optional) Show request flag
+// 8) (Optional) Object Count to be made per API call.
 
 // Output Expected:
 // 1) Timestamp
@@ -58,10 +60,10 @@ $of = fopen($OUTPUT_FILE, 'a') or die("can't open output file");
 
 // check for all required arguments
 // first argument is always name of script!
-if ($argc != 7) {
-   fwrite($lf,"ERROR: Too few arguments.\n\n");
+if ($argc < 7 || $argc > 9) {
+   fwrite($lf,"ERROR: Wrong number of arguments.\n\n");
    fwrite($of, date($DATE_FORMAT, time()).$SEPARATOR.
-   	       "ERROR: Too few arguments.".$SEPARATOR.
+   	       "ERROR: Wrong number of arguments.".$SEPARATOR.
 	       $argc.$SEPARATOR.
 	       "".$SEPARATOR.
 	       "".$SEPARATOR.
@@ -78,22 +80,33 @@ array_shift($argv);
 $wsdl = $argv[0];
 
 // get and use remaining arguments
-$username = $argv[1];
-$password = $argv[2];
-$operation = $argv[3];
-$object = $argv[4];
-if (strcasecmp($argv[5],"true") == 0) {
+$service_url = $argv[1];
+$username = $argv[2];
+$password = $argv[3];
+$operation = $argv[4];
+$object = $argv[5];
+if ($argc >= 8 && strcasecmp($argv[6],"true") == 0) {
     $showRequest = true;
 } else {
     $showRequest = false;
 }
+$objectCount = -1;
+if ($argc >= 9 && is_numeric($argv[7]) && $argv[7] > 0 && $argv[7] <= $maxZObjectCount) {
+    $objectCount = (int)$argv[7];
+}
 $fileName = $INPUT_FILE;
 
 fwrite($lf, "WSDL:           " . $wsdl . "\n");
+fwrite($lf, "URL:            " . $service_url . "\n");
 fwrite($lf, "Username:       " . $username . "\n");
 fwrite($lf, "Operation:      " . $operation . "\n");
 fwrite($lf, "Object:         " . $object . "\n");
-fwrite($lf, "Show Request:   " . $showRequest . "\n");
+fwrite($lf, "Show Request:   " . ($showRequest?"true":"false") . "\n");
+if ($objectCount < 0) {
+    fwrite($lf, "Object Cap:     DEFAUL\n");
+} else {
+    fwrite($lf, "Object Cap:     " . $objectCount . "\n");
+}
 fwrite($lf, "File Name:      " . $fileName . "\n");
 
 $error = false;
@@ -125,7 +138,8 @@ if (file_exists($fileName)) {
                 $header = $line;
                 # Validate the header.
                 $fields = ZuoraAPIHelper::getFieldList($wsdl,$object);
-            	# Need to add the Id field, since it belongs on the ZObject.
+            	# Need to add the fieldsToNull and Id field, since they're part of ZObject.
+            	array_unshift($fields, $FIELDSTONULL_FIELD);
             	array_unshift($fields, $ID_FIELD);
             	$errorFields = array();
             	for ($i = 0; $i < count($header); $i++) {
@@ -133,10 +147,17 @@ if (file_exists($fileName)) {
                     for ($j = 0; $j < count($fields); $j++) {
                         if (strcasecmp(trim($header[$i]), $fields[$j]) == 0) {
                             $found = true;
+                            break;
                         }
                     }
                	    if (!$found) {
-               	        $errorFields[] = $header[$i];
+                        // Exclude custom fields from validation.
+                        if (strpos($header[$i], "__")) {
+                            // Add the custom field to the list of valid headers.
+                            $fields[] = $header[$i];
+                        } else {
+                            $errorFields[] = $header[$i];
+                        }
                	    }
                 }
             	if (count($errorFields) > 0) {
@@ -178,6 +199,7 @@ if (file_exists($fileName)) {
         # Process the data.
         # Make the API call.
         $client = createClient($wsdl, $debug);
+        $client->setLocation($service_url);
         $header = login($client, $username, $password, $debug);
 
         // Iterate through the data.
@@ -200,7 +222,7 @@ if (file_exists($fileName)) {
                 fwrite($lf, xml_pretty_printer($soapRequest, true) . "\n");
 		continue;
             }
-            $result = ZuoraAPIHelper::bulkOperation($client, $header, $operation, $xml, count($chunk), $debug, TRUE);
+            $result = ZuoraAPIHelper::bulkOperation($client, $header, $operation, $xml, count($chunk), $debug, TRUE, $objectCount);
 	    $successCount += $result["successCount"];
 	    $errorCount += $result["errorCount"];
 	    $resultArray[] = $result;

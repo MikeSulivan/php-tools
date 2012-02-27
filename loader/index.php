@@ -40,6 +40,11 @@ if (array_key_exists('_submit_check', $_POST)) {
    $_SESSION['inputfile'] = cleanUpXML($_POST['inputfile']); // Input file name.
    $_SESSION['template-op'] = $_POST['template-op'];
    $_SESSION['template-object'] = $_POST['template-object'];
+   $_SESSION['service_url'] = $_POST['service_url'];
+   if (strlen($_SESSION['service_url']) <= 0) {
+      unset($_SESSION['service_url']);
+   }
+   $_SESSION['object-count'] = $_POST['object-count'];
 
    // Nuke the session if the Clear button was pressed.
    if (isset($_POST['reset'])) {
@@ -50,6 +55,8 @@ if (array_key_exists('_submit_check', $_POST)) {
       unset($_SESSION['inputfile']);
       unset($_SESSION['template-op']);
       unset($_SESSION['template-object']);
+      unset($_SESSION['service_url']);
+      unset($_SESSION['object-count']);
    }
 }
 
@@ -75,12 +82,21 @@ if (!isset($_SESSION['template-op'])) {
 if (!isset($_SESSION['template-object'])) {
    $_SESSION['template-object'] = "";
 }
+if (!isset($_SESSION['service_url'])) {
+   $_SESSION['service_url'] = ZuoraAPIHelper::getSoapAddress($baseDir . $_SESSION['wsdl']);
+}
+if (!isset($_SESSION['object-count'])) {
+   $_SESSION['object-count'] = "50";
+}
 
 #################################
 function execInBackground($cmd) {
     if (substr(php_uname(), 0, 7) == "Windows"){
         //pclose(popen("start /B ". $cmd, "r"));
-	exec($cmd);
+	//exec($cmd);
+	//$WshShell = new COM("WScript.Shell");
+	//$oExec = $WshShell->Run($cmd, 0, false);
+        pclose(popen("start \"bla\" " . $cmd, "r")); 
     } else {
         exec($cmd . " > /dev/null &");
     }
@@ -127,13 +143,13 @@ function dirList ($directory)
   <title>Z-Loader Utility</title>
  </head>
  <body>
-  <p><b>Function:</b> This utility allows mass API operations (Create, Update, Delete) driven from a CSV file. Each row of the CSV file represents an object and the column headers should match the API object fields exactly (the match is case sensitive). List of object fields can be found in the <a href="http://apidocs.developer.zuora.com/index.php/Main_Page">API documentation</a>. More help and usage examples for this utility can be found on this <a href="https://sites.google.com/a/zuora.com/services/Home/api-support">Wiki page</a>.</p>
-  <form enctype="multipart/form-data" method="POST" action=".">
+  <p><b>Function:</b> This utility allows mass API operations (Create, Update, Delete) driven from a CSV file. Each row of the CSV file represents an object and the column headers should match the API object fields exactly (the match is case sensitive). Empty cells will not be submitted. List of object fields can be found in the <a href="http://apidocs.developer.zuora.com/index.php/Main_Page">API documentation</a>.</p>
+  <form name="main" enctype="multipart/form-data" method="POST" action=".">
    <input type="hidden" name="_submit_check" value="1"/>
 
 <table>
 <tr>
-<td>WSDL:</td><td><select name="wsdl">
+<td>WSDL:</td><td><select name="wsdl" onchange="document.main.service_url.value=''">
 <?php
 $wsdl_files = dirList($baseDir);
 
@@ -160,9 +176,8 @@ foreach ($wsdl_files as $wsdl_filename) {
 }
 ?>
 </select></td>
-<td>SOAP&nbsp;Location:</td><td><?php
-echo ZuoraAPIHelper::getSoapAddress($baseDir . $_SESSION['wsdl']);
-?></td>
+<td>SOAP&nbsp;Location:</td>
+<td><input type="text" size="55" name="service_url" value="<?php echo $_SESSION['service_url'] ?>"/></td>
 </tr>
 
 <tr>
@@ -202,7 +217,7 @@ foreach ($names as $name) {
 </tr>
 
 <tr>
-<td>Input File:</td><td><input name="inputfile" type="file" /></td><td>&nbsp;</td><td>&nbsp;</td>
+<td>Input File:</td><td><input name="inputfile" type="file" /></td><td>API Call Size:</td><td><input type="text" size="2" name="object-count" value="<?php echo $_SESSION['object-count'] ?>"/></td>
 </table>
 
 <input type="submit" value="Submit" name="submit"/><input type="submit" value="Clear" name="reset"/><input type="submit" value="Refresh" name="refresh"/>&nbsp;<input type="submit" value="Clear Log Files" name="clear"/>
@@ -222,6 +237,7 @@ if (isset($_POST['clear'])) {
 if (isset($_POST['submit'])) {
     // get and use remaining arguments
     $method = $_SESSION['method'];
+    $service_url = $_SESSION['service_url'];
     $username = $_SESSION['username'];
     $password = $_SESSION['password'];
     $wsdl = $_SESSION['wsdl'];
@@ -231,6 +247,7 @@ if (isset($_POST['submit'])) {
     if ($_POST['show-request']) {
         $showRequest = "true";
     }
+    $objectCount = $_SESSION['object-count'];
     $fileName = $_FILES['inputfile']['tmp_name'];
     try {
         // Shift uploaded file to input file.
@@ -242,11 +259,13 @@ if (isset($_POST['submit'])) {
     	// Start processing
     	$command = "php call.php " 
     		     . escapeshellarg($baseDir . $wsdl) . " " 
+    		     . escapeshellarg($service_url) . " " 
     		     . escapeshellarg($username) . " " 
     		     . escapeshellarg($password) . " "
     		     . escapeshellarg($operation) . " "
     		     . escapeshellarg($object) . " "
-    		     . escapeshellarg($showRequest);
+    		     . escapeshellarg($showRequest) . " "
+    		     . escapeshellarg($objectCount);
     	unset($output);
     	execInBackground($command);
     	//exec($command, $output, $returnVal);
